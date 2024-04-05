@@ -1,0 +1,104 @@
+--- a/SConstruct	2024-04-11 08:15:28.862363413 +0200
++++ b/SConstruct	2024-04-11 08:16:45.853318837 +0200
+@@ -23,7 +23,6 @@
+ 
+ import SCons
+ import SCons.Script
+-from mongo_tooling_metrics.lib.top_level_metrics import SConsToolingMetrics
+ from site_scons.mongo import build_profiles
+ 
+ # This must be first, even before EnsureSConsVersion, if
+@@ -1647,16 +1646,6 @@
+ del envDict
+ env.AddMethod(lambda env, name, **kwargs: add_option(name, **kwargs), 'AddOption')
+ 
+-# The placement of this is intentional. Here we setup an atexit method to store tooling metrics.
+-# We should only register this function after env, env_vars and the parser have been properly initialized.
+-SConsToolingMetrics.register_metrics(
+-    utc_starttime=datetime.utcnow(),
+-    artifact_dir=env.Dir('$BUILD_DIR').get_abspath(),
+-    env_vars=env_vars,
+-    env=env,
+-    parser=_parser,
+-)
+-
+ if get_option('build-metrics'):
+     env['BUILD_METRICS_ARTIFACTS_DIR'] = '$BUILD_ROOT/$VARIANT_DIR'
+     env.Tool('build_metrics')
+@@ -1793,9 +1782,9 @@
+     print(env_vars.GenerateHelpText(env))
+     Exit(0)
+ 
+-unknown_vars = env_vars.UnknownVariables()
+-if unknown_vars:
+-    env.FatalError("Unknown variables specified: {0}", ", ".join(list(unknown_vars.keys())))
++#unknown_vars = env_vars.UnknownVariables()
++#if unknown_vars:
++#    env.FatalError("Unknown variables specified: {0}", ", ".join(list(unknown_vars.keys())))
+ 
+ install_actions.setup(env, get_option('install-action'))
+ 
+@@ -3018,7 +3007,7 @@
+             # If runtime hardening is requested, then build anything
+             # destined for an executable with the necessary flags for PIE.
+             env.AppendUnique(
+-                PROGCCFLAGS=['-fPIE'],
++                PROGCCFLAGS=['-fpic'],
+                 PROGLINKFLAGS=['-pie'],
+             )
+ 
+@@ -3026,7 +3015,6 @@
+     env.Append(
+         CCFLAGS=[
+             "-fasynchronous-unwind-tables",
+-            "-g2" if not env.TargetOSIs('emscripten') else "-g",
+             "-Wall",
+             "-Wsign-compare",
+             "-Wno-unknown-pragmas",
+@@ -3093,6 +3081,8 @@
+ 
+     # env.Append( " -Wconversion" ) TODO: this doesn't really work yet
+     env.Append(CXXFLAGS=["-Woverloaded-virtual"])
++    env.Append(CXXFLAGS=os.environ['CXXFLAGS'])
++    env.Append(LINKFLAGS=os.environ['LDFLAGS'])
+ 
+     # On OS X, clang doesn't want the pthread flag at link time, or it
+     # issues warnings which make it impossible for us to declare link
+@@ -3143,7 +3133,7 @@
+         ], )
+ 
+     #make scons colorgcc friendly
+-    for key in ('HOME', 'TERM'):
++    for key in ('HOME', 'TERM', 'PATH'):
+         try:
+             env['ENV'][key] = os.environ[key]
+         except KeyError:
+@@ -5120,17 +5110,13 @@
+         "BOOST_LOG_NO_SHORTHAND_NAMES",
+         "BOOST_LOG_USE_NATIVE_SYSLOG",
+         "BOOST_LOG_WITHOUT_THREAD_ATTR",
++        "BOOST_LOG_DYN_LINK",
+         "BOOST_MATH_NO_LONG_DOUBLE_MATH_FUNCTIONS",
+         "BOOST_SYSTEM_NO_DEPRECATED",
+         "BOOST_THREAD_USES_DATETIME",
+         ("BOOST_THREAD_VERSION", "5"),
+     ])
+ 
+-    if link_model.startswith("dynamic") and not link_model == 'dynamic-sdk':
+-        conf.env.AppendUnique(CPPDEFINES=[
+-            "BOOST_LOG_DYN_LINK",
+-        ])
+-
+     if use_system_version_of_library("boost"):
+         if not conf.CheckCXXHeader("boost/filesystem/operations.hpp"):
+             myenv.ConfError("can't find boost headers")
+@@ -5327,6 +5313,9 @@
+ 
+     mongoc_mode = get_option('use-system-mongo-c')
+     conf.env['MONGO_HAVE_LIBMONGOC'] = False
++    conf.env.ParseConfig('pkg-config libbson-1.0 libmongoc-1.0 --cflags')
++    conf.env['LIBDEPS_LIBBSON_SYSLIBDEP'] = 'bson-1.0'
++
+     if mongoc_mode != 'off':
+         if conf.CheckLibWithHeader(
+             ["mongoc-1.0"],
