@@ -1,0 +1,17 @@
+# Template file for 'stripe-cli'
+pkgname=stripe-cli
+version=1.23.10
+revision=1
+build_style=go
+go_import_path="github.com/stripe/stripe-cli"
+go_package="${go_import_path}/cmd/stripe"
+short_desc="A command-line tool for Stripe"
+maintainer="Florian Wagner <florian@wagner-flo.de>"
+license="Apache-2.0"
+homepage="https://stripe.com/docs/stripe-cli"
+distfiles="https://github.com/stripe/stripe-cli/archive/refs/tags/v${version}.tar.gz"
+checksum=80dd540e560f01c942d39380faa51e8a05ed8d9591ac3a01219e78a1980c3036
+
+post_install() {
+	vlicense LICENSE
+}
