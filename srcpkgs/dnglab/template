@@ -1,0 +1,16 @@
+# Template file for 'dnglag'
+pkgname=dnglab
+version=0.6.3
+revision=1
+build_style=cargo
+make_install_args="--path bin/dnglab"
+short_desc="Camera RAW to DNG file format converter"
+maintainer="Florian Wagner <florian@wagner-flo.de>"
+license="LGPL-2.1-only"
+homepage="https://github.com/dnglab/dnglab"
+distfiles="https://github.com/dnglab/dnglab/archive/refs/tags/v${version}.tar.gz"
+checksum=a3c4d7bb22bf16811f2018eb1b4c9f633b67320d56659fc643d4d809dc58d01b
+
+post_install() {
+	vlicense LICENSE
+}
